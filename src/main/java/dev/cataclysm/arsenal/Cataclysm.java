@@ -55,7 +55,10 @@ public final class Cataclysm implements ModInitializer {
                 if (--strike.ticks <= 0) {
                     Vec3d p = strike.target;
                     strike.world.createExplosion(null, p.x, p.y, p.z, 9.0f, World.ExplosionSourceType.TNT);
-                    iterator.remove();
+                    strike.prepareCrater();
+                    strike.ticks = -1;
+                } else if (strike.ticks < 0) {
+                    if (strike.digCrater()) iterator.remove();
                 }
             }
         });
@@ -64,6 +67,26 @@ public final class Cataclysm implements ModInitializer {
         final ServerWorld world;
         final Vec3d target;
         int ticks;
+        int index;
+        final List<BlockPos> blocks = new ArrayList<>();
+        void prepareCrater() {
+            BlockPos center = BlockPos.ofFloored(target);
+            for (int x = -16; x <= 16; x++) for (int z = -16; z <= 16; z++) {
+                double radius = Math.sqrt(x * x + z * z);
+                if (radius > 16) continue;
+                int depth = (int)Math.ceil(9 * (1 - radius * radius / 256));
+                for (int y = -depth; y <= 2; y++) blocks.add(center.add(x, y, z));
+            }
+        }
+        boolean digCrater() {
+            int budget = 200;
+            while (index < blocks.size() && budget-- > 0) {
+                BlockPos p = blocks.get(index++);
+                if (world.isChunkLoaded(p) && world.isInBuildLimit(p) && !world.getBlockState(p).isOf(Blocks.BEDROCK))
+                    world.setBlockState(p, Blocks.AIR.getDefaultState(), 3);
+            }
+            return index >= blocks.size();
+        }
         PendingStrike(ServerWorld world, Vec3d target, int ticks) { this.world = world; this.target = target; this.ticks = ticks; }
     }
 }
