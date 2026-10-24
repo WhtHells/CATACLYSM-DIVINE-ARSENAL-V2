@@ -52,7 +52,7 @@ public final class Cataclysm implements ModInitializer {
             Iterator<PendingStrike> iterator = STRIKES.iterator();
             while (iterator.hasNext()) {
                 PendingStrike strike = iterator.next();
-                if (--strike.ticks <= 0) {
+                if (--strike.ticks == 0) {
                     Vec3d p = strike.target;
                     strike.world.createExplosion(null, p.x, p.y, p.z, 9.0f, World.ExplosionSourceType.TNT);
                     strike.prepareCrater();
