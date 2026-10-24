@@ -3,6 +3,10 @@ package dev.cataclysm.arsenal;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.block.Blocks;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
@@ -36,8 +40,9 @@ public final class Cataclysm implements ModInitializer {
                 // Client rendering is triggered by a dedicated client-side item hook.
             } else if (world instanceof ServerWorld serverWorld) {
                 STRIKES.add(new PendingStrike(serverWorld, target, 64));
+                serverWorld.playSound(null, BlockPos.ofFloored(target), SoundEvents.BLOCK_BEACON_ACTIVATE, SoundCategory.PLAYERS, 2.0f, 0.6f);
             }
-            player.getItemCooldownManager().set(this, 160);
+            player.getItemCooldownManager().set(this, 240);
             return TypedActionResult.success(stack, world.isClient());
         }
     };
@@ -49,7 +54,7 @@ public final class Cataclysm implements ModInitializer {
                 PendingStrike strike = iterator.next();
                 if (--strike.ticks <= 0) {
                     Vec3d p = strike.target;
-                    strike.world.createExplosion(null, p.x, p.y, p.z, 7.0f, World.ExplosionSourceType.TNT);
+                    strike.world.createExplosion(null, p.x, p.y, p.z, 9.0f, World.ExplosionSourceType.TNT);
                     iterator.remove();
                 }
             }
