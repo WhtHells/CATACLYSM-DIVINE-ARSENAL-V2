@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.block.Blocks;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -52,9 +53,16 @@ public final class Cataclysm implements ModInitializer {
             Iterator<PendingStrike> iterator = STRIKES.iterator();
             while (iterator.hasNext()) {
                 PendingStrike strike = iterator.next();
+                if (strike.ticks > 0 && strike.ticks % 12 == 0) {
+                    strike.world.spawnParticles(ParticleTypes.END_ROD, strike.target.x, strike.target.y + 2, strike.target.z, 18, 3.5, 2.0, 3.5, 0.08);
+                    strike.world.playSound(null, BlockPos.ofFloored(strike.target), SoundEvents.BLOCK_BEACON_AMBIENT, SoundCategory.PLAYERS, 0.75f, 0.7f + (64-strike.ticks)*0.012f);
+                }
                 if (--strike.ticks == 0) {
                     Vec3d p = strike.target;
                     strike.world.createExplosion(null, p.x, p.y, p.z, 9.0f, World.ExplosionSourceType.TNT);
+                    strike.world.spawnParticles(ParticleTypes.EXPLOSION_EMITTER, p.x, p.y + 1, p.z, 1, 0, 0, 0, 0);
+                    strike.world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, p.x, p.y + 2, p.z, 130, 7, 4, 7, 0.35);
+                    strike.world.playSound(null, BlockPos.ofFloored(p), SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 3.0f, 0.55f);
                     strike.prepareCrater();
                     strike.ticks = -1;
                 } else if (strike.ticks < 0) {
@@ -82,7 +90,7 @@ public final class Cataclysm implements ModInitializer {
             int budget = 200;
             while (index < blocks.size() && budget-- > 0) {
                 BlockPos p = blocks.get(index++);
-                if (world.isChunkLoaded(p) && world.isInBuildLimit(p) && !world.getBlockState(p).isOf(Blocks.BEDROCK))
+                if (world.isChunkLoaded(p) && world.isInBuildLimit(p) && !world.getBlockState(p).isOf(Blocks.BEDROCK) && !world.getBlockState(p).isAir() && !world.getBlockState(p).hasBlockEntity())
                     world.setBlockState(p, Blocks.AIR.getDefaultState(), 3);
             }
             return index >= blocks.size();
