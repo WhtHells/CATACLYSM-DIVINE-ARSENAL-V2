@@ -73,9 +73,20 @@ public final class CataclysmClient implements ClientModInitializer {
         double aim=smooth(0,0.5,t)*(1-smooth(2.6,3.3,t));
         if (aim>0) for(int i=0;i<3;i++)
             ring(b,m,x,y+i*0.15,z,4+i*2.7,0.065,0.14,0.62,1,(float)(aim*0.5),t*(i%2==0?1:-1),64);
-        double charge=smooth(1.6,2.8,t)*(1-smooth(3.1,3.5,t));
+        double charge=smooth(0.25,1.8,t)*(1-smooth(3.1,3.5,t));
         if (charge>0) for(int i=0;i<3;i++)
-            ring(b,m,x,y+68+i*2,z,6+i*3,0.1,0.4,0.72,1,(float)(charge*0.6),t,64);
+            ring(b,m,x,y+68+i*2,z,6+i*3,0.25,0.4,0.72,1,(float)(charge*0.7),t*(i%2==0?1:-1),64);
+        if(charge>0) {
+            for(int arm=0;arm<12;arm++) {
+                double a=arm*Math.PI/6+t*0.15;
+                double inner=8,outer=19;
+                double sx=x+Math.cos(a)*inner,sz=z+Math.sin(a)*inner;
+                double ex=x+Math.cos(a)*outer,ez=z+Math.sin(a)*outer;
+                double h=y+69+Math.sin(arm*2.4+t)*1.5;
+                quad(b,m,sx,h-0.8,sz,ex,h-1.5,ez,ex,h+1.5,ez,sx,h+0.8,sz,0.1,0.45,0.8,(float)(charge*0.8));
+            }
+            for(int k=0;k<3;k++) ring(b,m,x,y+64+k*5,z,18+k*2.5,0.4,0.1,0.9,1,(float)(charge*0.8),-t*(k+1)*0.4,72);
+        }
         double beam=smooth(3.12,3.25,t)*(1-smooth(4.05,4.4,t));
         if(beam>0) {
             double pulse=1+0.07*Math.sin(t*35);
@@ -93,6 +104,8 @@ public final class CataclysmClient implements ClientModInitializer {
         if(impact>0) {
             double age=Math.max(0,t-3.25), radius=2+age*22;
             ring(b,m,x,y+0.25,z,radius,0.35+age*0.18,0.65,0.87,1,(float)(impact*0.7),0,72);
+            ring(b,m,x,y+0.3,z,radius*0.75,0.25,0.9,0.95,1,(float)(impact*0.6),-t,72);
+            ring(b,m,x,y+0.4,z,radius*1.1,0.2,0.25,0.75,1,(float)(impact*0.4),t,72);
             for(int i=0;i<24;i++) {
                 double a=i*Math.PI/12, rr=radius*(0.8+0.2*Math.sin(i*7.1));
                 vertical(b,m,x+Math.cos(a)*rr,y,z+Math.sin(a)*rr,0.16,0.5+age*2.1,0.55,0.63,0.7,(float)(impact*0.14));
