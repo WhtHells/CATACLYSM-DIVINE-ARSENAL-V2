@@ -25,7 +25,8 @@ import java.util.List;
 
 public final class CataclysmClient implements ClientModInitializer {
     private static final List<StrikeVisual> VISUALS = new ArrayList<>();
-    public static void beginStrike(Vec3d target) { VISUALS.add(new StrikeVisual(target, System.nanoTime())); }
+    private static final int MAX_VISUALS = 3;
+    public static void beginStrike(Vec3d target) { if (VISUALS.size() >= MAX_VISUALS) VISUALS.remove(0); VISUALS.add(new StrikeVisual(target, System.nanoTime())); }
 
     @Override public void onInitializeClient() {
         UseItemCallback.EVENT.register((player, world, hand) -> {
@@ -74,6 +75,9 @@ public final class CataclysmClient implements ClientModInitializer {
         if (aim>0) for(int i=0;i<3;i++)
             ring(b,m,x,y+i*0.15,z,4+i*2.7,0.065,0.14,0.62,1,(float)(aim*0.5),t*(i%2==0?1:-1),64);
         double charge=smooth(0.25,1.8,t)*(1-smooth(3.1,3.5,t));
+        if (charge>0) {
+            orbitalStation(b,m,x,y+70,z,t,(float)charge);
+        }
         if (charge>0) for(int i=0;i<3;i++)
             ring(b,m,x,y+68+i*2,z,6+i*3,0.25,0.4,0.72,1,(float)(charge*0.7),t*(i%2==0?1:-1),64);
         if(charge>0) {
@@ -111,6 +115,59 @@ public final class CataclysmClient implements ClientModInitializer {
                 vertical(b,m,x+Math.cos(a)*rr,y,z+Math.sin(a)*rr,0.16,0.5+age*2.1,0.55,0.63,0.7,(float)(impact*0.14));
             }
         }
+    }
+
+    // Procedural hard-surface orbital platform. All geometry is emitted as batched
+    // colored quads; no extra textures, draw calls or third-party render libraries.
+    private static void orbitalStation(BufferBuilder b, Matrix4f m, double x, double y, double z, double t, float alpha) {
+        double spin=t*0.22;
+        // Hexagonal segmented armored torus: 16 hull plates, independent emissive seams.
+        for (int i=0;i<16;i++) {
+            double a=2*Math.PI*i/16+spin;
+            double a2=2*Math.PI*(i+0.82)/16+spin;
+            annularPanel(b,m,x,y,z,9.2,14.5,a,a2,0.12,0.2,0.3,alpha*0.85f);
+            annularPanel(b,m,x,y+0.08,z,11.65,12.05,a,a2,0.18,0.75,1,alpha);
+            // Outer mechanical pylons have a distinct silhouette from a glowing ring.
+            double px=x+Math.cos((a+a2)/2)*15.5, pz=z+Math.sin((a+a2)/2)*15.5;
+            cuboid(b,m,px-0.7,y-2.8,pz-0.7,px+0.7,y+2.8,pz+0.7,0.13,0.2,0.29,alpha);
+            cuboid(b,m,px-0.34,y-2.9,pz-0.34,px+0.34,y+2.9,pz+0.34,0.25,0.85,1,alpha*0.85f);
+        }
+        // Three concentric gyroscopic rails at distinct altitudes.
+        for(int k=0;k<3;k++) {
+            double rr=4.5+k*2.25;
+            ring(b,m,x,y-4+k*2,z,rr,0.34,0.15,0.68,0.95,alpha,spin*(k%2==0?3:-4),48);
+            ring(b,m,x,y-3.85+k*2,z,rr+0.52,0.11,0.75,0.95,1,alpha*0.8f,-spin*2,48);
+        }
+        // Reactor housing, 8 large faceted cooling vanes.
+        cuboid(b,m,x-2.3,y-2.1,z-2.3,x+2.3,y+2.1,z+2.3,0.08,0.14,0.22,alpha);
+        cuboid(b,m,x-1.35,y-2.4,z-1.35,x+1.35,y+2.4,z+1.35,0.25,0.78,1,alpha);
+        for(int i=0;i<8;i++) {
+            double a=i*Math.PI/4-spin*1.8;
+            double dx=Math.cos(a),dz=Math.sin(a);
+            double px=x+dx*5.6,pz=z+dz*5.6;
+            cuboid(b,m,px-0.45,y-1.8,pz-0.45,px+0.45,y+1.8,pz+0.45,0.14,0.27,0.39,alpha);
+            vertical(b,m,px,y-2,pz,0.14,4,0.3,0.9,1,alpha*0.7f);
+        }
+        // Eight animated emitter lenses.
+        for(int i=0;i<8;i++) {
+            double a=i*Math.PI/4+spin*2;
+            double px=x+Math.cos(a)*3.7,pz=z+Math.sin(a)*3.7;
+            cuboid(b,m,px-0.55,y-0.8,pz-0.55,px+0.55,y+0.8,pz+0.55,0.5,0.9,1,alpha*0.8f);
+        }
+    }
+    private static void annularPanel(BufferBuilder b,Matrix4f m,double x,double y,double z,double inner,double outer,double a,double a2,double r,double g,double blue,float alpha) {
+        quad(b,m,x+Math.cos(a)*inner,y,z+Math.sin(a)*inner,
+            x+Math.cos(a2)*inner,y,z+Math.sin(a2)*inner,
+            x+Math.cos(a2)*outer,y,z+Math.sin(a2)*outer,
+            x+Math.cos(a)*outer,y,z+Math.sin(a)*outer,r,g,blue,alpha);
+    }
+    private static void cuboid(BufferBuilder b,Matrix4f m,double x1,double y1,double z1,double x2,double y2,double z2,double r,double g,double blue,float alpha) {
+        quad(b,m,x1,y1,z1,x2,y1,z1,x2,y2,z1,x1,y2,z1,r,g,blue,alpha);
+        quad(b,m,x2,y1,z2,x1,y1,z2,x1,y2,z2,x2,y2,z2,r,g,blue,alpha);
+        quad(b,m,x1,y1,z2,x1,y1,z1,x1,y2,z1,x1,y2,z2,r,g,blue,alpha);
+        quad(b,m,x2,y1,z1,x2,y1,z2,x2,y2,z2,x2,y2,z1,r,g,blue,alpha);
+        quad(b,m,x1,y2,z1,x2,y2,z1,x2,y2,z2,x1,y2,z2,r,g,blue,alpha);
+        quad(b,m,x1,y1,z2,x2,y1,z2,x2,y1,z1,x1,y1,z1,r,g,blue,alpha);
     }
     private static double smooth(double a,double b,double x) {
         double v=Math.max(0,Math.min(1,(x-a)/(b-a)));
