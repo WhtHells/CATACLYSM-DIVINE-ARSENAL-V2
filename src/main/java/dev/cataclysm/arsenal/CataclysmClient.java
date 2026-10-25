@@ -26,9 +26,10 @@ import java.util.List;
 public final class CataclysmClient implements ClientModInitializer {
     private static final List<StrikeVisual> VISUALS = new ArrayList<>();
     private static final int MAX_VISUALS = 3;
-    public static void beginStrike(Vec3d target) { if (VISUALS.size() >= MAX_VISUALS) VISUALS.remove(0); VISUALS.add(new StrikeVisual(target, System.nanoTime())); }
+    public static void beginStrike(Vec3d target) { if (VISUALS.size() >= MAX_VISUALS) VISUALS.remove(0); VISUALS.add(new StrikeVisual(target, System.nanoTime())); StrikeCinematicHud.begin(target); }
 
     @Override public void onInitializeClient() {
+        StrikeCinematicHud.register();
         UseItemCallback.EVENT.register((player, world, hand) -> {
             if (world.isClient && player.getStackInHand(hand).isOf(Cataclysm.SOLAR_LANCE)
                 && !player.getItemCooldownManager().isCoolingDown(Cataclysm.SOLAR_LANCE)) {
@@ -44,7 +45,7 @@ public final class CataclysmClient implements ClientModInitializer {
             if (client.world == null || client.player == null) { VISUALS.clear(); return; }
             long now = System.nanoTime();
             Iterator<StrikeVisual> iterator = VISUALS.iterator();
-            while (iterator.hasNext()) if ((now - iterator.next().started) / 1e9 > 6.2) iterator.remove();
+            while (iterator.hasNext()) if ((now - iterator.next().started) / 1e9 > 8.0) iterator.remove();
             if (VISUALS.isEmpty()) return;
             MatrixStack matrices = context.matrixStack();
             Vec3d camera = context.camera().getPos();
@@ -94,6 +95,8 @@ public final class CataclysmClient implements ClientModInitializer {
         double beam=smooth(3.12,3.25,t)*(1-smooth(4.05,4.4,t));
         if(beam>0) {
             double pulse=1+0.07*Math.sin(t*35);
+            cylinder(b,m,x,y,z,12*pulse,76,0.35,0.03,0.09,(float)(0.10*beam),28);
+            cylinder(b,m,x,y,z,9*pulse,76,1,0.07,0.14,(float)(0.15*beam),28);
             cylinder(b,m,x,y,z,7*pulse,76,0.12,0.4,1,(float)(0.11*beam),28);
             cylinder(b,m,x,y,z,4*pulse,76,0.35,0.7,1,(float)(0.22*beam),28);
             cylinder(b,m,x,y,z,1.6*pulse,76,0.9,0.95,1,(float)(0.55*beam),28);
@@ -104,9 +107,13 @@ public final class CataclysmClient implements ClientModInitializer {
                 vertical(b,m,x+Math.cos(angle)*radius,y+h,z+Math.sin(angle)*radius,0.09,2.2,0.5,0.8,1,(float)(beam*0.4));
             }
         }
-        double impact=smooth(3.2,3.4,t)*(1-smooth(4.5,5.8,t));
+        double impact=smooth(3.2,3.4,t)*(1-smooth(5.2,7.0,t));
         if(impact>0) {
-            double age=Math.max(0,t-3.25), radius=2+age*22;
+            double redPulse = 1-smooth(3.3,4.8,t);
+            if(redPulse>0) {
+                cylinder(b,m,x,y,z,10+ageForImpact(t)*8,68,0.9,0.04,0.08,(float)(impact*redPulse*0.15),32);
+            }
+            double age=Math.max(0,t-3.25), radius=2+age*19;
             ring(b,m,x,y+0.25,z,radius,0.35+age*0.18,0.65,0.87,1,(float)(impact*0.7),0,72);
             ring(b,m,x,y+0.3,z,radius*0.75,0.25,0.9,0.95,1,(float)(impact*0.6),-t,72);
             ring(b,m,x,y+0.4,z,radius*1.1,0.2,0.25,0.75,1,(float)(impact*0.4),t,72);
@@ -119,6 +126,7 @@ public final class CataclysmClient implements ClientModInitializer {
 
     // Procedural hard-surface orbital platform. All geometry is emitted as batched
     // colored quads; no extra textures, draw calls or third-party render libraries.
+    private static double ageForImpact(double t) { return Math.max(0,t-3.25); }
     private static void orbitalStation(BufferBuilder b, Matrix4f m, double x, double y, double z, double t, float alpha) {
         double spin=t*0.22;
         // Hexagonal segmented armored torus: 16 hull plates, independent emissive seams.
